@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PWA Check</title>
+<style>
+body{font-family:sans-serif;background:#0a0a14;color:#e2e2f0;padding:20px;direction:rtl}
+.ok{color:#34d399;font-weight:700}
+.err{color:#f87171;font-weight:700}
+.warn{color:#fbbf24;font-weight:700}
+div{margin:10px 0;padding:10px;background:rgba(255,255,255,.05);border-radius:8px;font-size:14px}
+h2{color:#FFD700;margin-bottom:16px}
+</style>
+</head>
+<body>
+<h2>🔍 PWA Diagnostic</h2>
+<div id="https-check">🔄 HTTPS...</div>
+<div id="sw-check">🔄 Service Worker...</div>
+<div id="manifest-check">🔄 Manifest...</div>
+<div id="install-check">🔄 Install prompt...</div>
+<div id="icon-check">🔄 Icon...</div>
+<div id="result" style="margin-top:20px;padding:16px;border-radius:12px"></div>
+
+<script>
+// 1. HTTPS
+const isHTTPS = location.protocol === 'https:';
+document.getElementById('https-check').innerHTML =
+  (isHTTPS ? '<span class="ok">✅ HTTPS</span>' : '<span class="err">❌ ليس HTTPS</span>') +
+  ' — ' + location.href;
+
+// 2. Service Worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(regs=>{
+    if(regs.length > 0){
+      document.getElementById('sw-check').innerHTML =
+        '<span class="ok">✅ Service Worker مسجل</span> — scope: ' + regs[0].scope;
+    } else {
+      // نسجله الآن
+      navigator.serviceWorker.register('./sw.js').then(reg=>{
+        document.getElementById('sw-check').innerHTML =
+          '<span class="ok">✅ SW سجل بنجاح</span> — scope: ' + reg.scope;
+      }).catch(e=>{
+        document.getElementById('sw-check').innerHTML =
+          '<span class="err">❌ SW فشل: ' + e.message + '</span>';
+      });
+    }
+  });
+} else {
+  document.getElementById('sw-check').innerHTML =
+    '<span class="err">❌ Service Worker غير مدعوم</span>';
+}
+
+// 3. Manifest
+fetch('./manifest.json')
+  .then(r=>r.json())
+  .then(d=>{
+    document.getElementById('manifest-check').innerHTML =
+      '<span class="ok">✅ Manifest موجود</span><br>' +
+      '• name: ' + d.name + '<br>' +
+      '• start_url: ' + d.start_url + '<br>' +
+      '• scope: ' + d.scope + '<br>' +
+      '• display: ' + d.display + '<br>' +
+      '• icons: ' + (d.icons?.length || 0) + ' أيقونة';
+  }).catch(e=>{
+    document.getElementById('manifest-check').innerHTML =
+      '<span class="err">❌ Manifest غير موجود أو خطأ: ' + e.message + '</span>';
+  });
+
+// 4. Install prompt
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{
+  deferredPrompt = e;
+  document.getElementById('install-check').innerHTML =
+    '<span class="ok">✅ Install prompt متوفر!</span> — <button onclick="deferredPrompt.prompt()" style="padding:8px 16px;background:#34d399;border:none;border-radius:8px;font-weight:700;cursor:pointer">ثبت الآن</button>';
+});
+setTimeout(()=>{
+  if(!deferredPrompt){
+    document.getElementById('install-check').innerHTML =
+      '<span class="warn">⚠️ Install prompt ما جاش بعد</span><br>' +
+      '<small style="color:rgba(255,255,255,.4)">إذا كل شي صح — جرب بعد 30 ثانية أو من Incognito</small>';
+  }
+}, 3000);
+
+// 5. Icon
+const img = new Image();
+img.onload = ()=>{
+  document.getElementById('icon-check').innerHTML =
+    '<span class="ok">✅ icon.png موجود</span> <img src="./icon.png" style="width:32px;height:32px;border-radius:50%;vertical-align:middle"/>';
+};
+img.onerror = ()=>{
+  document.getElementById('icon-check').innerHTML =
+    '<span class="err">❌ icon.png غير موجود</span>';
+};
+img.src = './icon.png';
+
+// النتيجة
+setTimeout(()=>{
+  const allOk = isHTTPS;
+  document.getElementById('result').style.background = allOk ? 'rgba(52,211,153,.1)' : 'rgba(248,113,113,.1)';
+  document.getElementById('result').style.border = '1px solid ' + (allOk ? '#34d399' : '#f87171');
+  document.getElementById('result').innerHTML =
+    '<b style="font-size:16px">📋 الخلاصة:</b><br><br>' +
+    'افتح هاد الصفحة على تيليفونك وأرسل لي screenshot باش نشوف المشكل بالضبط';
+}, 2000);
+</script>
+</body>
+</html>
